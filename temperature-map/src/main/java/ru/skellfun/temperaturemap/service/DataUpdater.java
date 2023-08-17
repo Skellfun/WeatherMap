@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -17,6 +19,9 @@ import ru.skellfun.temperaturemap.dto.ResponseDTO;
 import ru.skellfun.temperaturemap.entity.CityTemperature;
 import ru.skellfun.temperaturemap.repository.CityTemperatureRepository;
 
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -24,24 +29,41 @@ import java.util.concurrent.TimeUnit;
 public class DataUpdater {
     private final Config config;
     private final CityTemperatureRepository cityTemperatureRepository;
+    private final Logger logger = LoggerFactory.getLogger(DataUpdater.class);
 
-    public ResponseDTO getAverageTemperature(String from, String to){
-
-        return new ResponseDTO();
+    public List<ResponseDTO> getAverageTemperatures(String from, String to){
+        ZonedDateTime zdtFrom = ZonedDateTime.parse(from);
+        ZonedDateTime zdtTo = ZonedDateTime.parse(to);
+        if(zdtFrom.isAfter(zdtTo)) {
+            zdtFrom = ZonedDateTime.parse(to);
+            zdtTo = ZonedDateTime.parse(from);
+        }
+        List<CityTemperature> cityTemperatureList = cityTemperatureRepository.findByDateTimeGreaterThanAndDateTimeLessThan(zdtFrom, zdtTo);
+        List<ResponseDTO> responseDTOS = new ArrayList<>();
+        config.getCities().forEach(city -> {
+            try {
+                double averageTemperature = cityTemperatureList.stream()
+                        .filter(c -> c.getCity().equals(city))
+                        .mapToDouble(CityTemperature::getTemperature)
+                        .average().orElseThrow();
+                responseDTOS.add(new ResponseDTO(city, averageTemperature));
+            } catch (Exception e) {
+                logger.debug(city + ": " + e.getMessage());
+            }
+        });
+        return responseDTOS;
     }
 
     @Scheduled(timeUnit = TimeUnit.MINUTES, fixedRate = 1)
-    public String loadTemperatures() {
-        StringBuffer exception = new StringBuffer();
+    public void loadTemperatures() {
         config.getCities().forEach(city -> {
             try{
                 double temperature = getCityTemperature(city);
                 saveData(city, temperature);
             } catch (Exception e) {
-                exception.append(city + ": " +e.getMessage() + System.lineSeparator());
+                logger.debug(city + ": " + e.getMessage());
             }
         });
-        return exception.toString();
     }
     private double getCityTemperature(String city) throws ParseException,IllegalArgumentException {
         RestTemplateBuilder restTemplateBuilder = new RestTemplateBuilder();

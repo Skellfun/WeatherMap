@@ -9,10 +9,7 @@ import lombok.Generated;
 
 import javax.swing.text.DateFormatter;
 import java.text.DateFormat;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
@@ -28,5 +25,5 @@ public class CityTemperature {
 
     private double temperature;
 
-    private LocalDateTime date_time = ZonedDateTime.now(ZoneOffset.UTC).toLocalDateTime().truncatedTo(ChronoUnit.SECONDS);
+    private ZonedDateTime dateTime = ZonedDateTime.now();
 }

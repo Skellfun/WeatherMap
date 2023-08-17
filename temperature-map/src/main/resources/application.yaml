@@ -10,4 +10,7 @@ spring:
     username: ${DB_USER}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
-cities: samara, moscow, vladivostok
+logging:
+  level:
+    ru.skellfun: debug
+cities: samara, moscoww, vladivostok
